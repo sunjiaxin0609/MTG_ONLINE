@@ -1,0 +1,158 @@
+{
+  "name": "黑白中速",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Angel of Finality",
+      "count": 1
+    },
+    {
+      "name": "Avenger of the Fallen",
+      "count": 1
+    },
+    {
+      "name": "Boneyard Desecrator",
+      "count": 1
+    },
+    {
+      "name": "Bridled Bighorn",
+      "count": 1
+    },
+    {
+      "name": "Brightfield Glider",
+      "count": 1
+    },
+    {
+      "name": "Brightspear Zealot",
+      "count": 1
+    },
+    {
+      "name": "Captain Marvel, Earth's Protector",
+      "count": 1
+    },
+    {
+      "name": "Cursed Courtier",
+      "count": 1
+    },
+    {
+      "name": "Dark Matter Manipulator",
+      "count": 1
+    },
+    {
+      "name": "Diregraf Ghoul",
+      "count": 1
+    },
+    {
+      "name": "Gas Guzzler",
+      "count": 1
+    },
+    {
+      "name": "Guardian of the Great Door",
+      "count": 1
+    },
+    {
+      "name": "Imperious Inkmage",
+      "count": 1
+    },
+    {
+      "name": "Kalakscion, Hunger Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Knight of Grace",
+      "count": 1
+    },
+    {
+      "name": "Knight of Malice",
+      "count": 1
+    },
+    {
+      "name": "Lyra, Archangel of Dawn",
+      "count": 1
+    },
+    {
+      "name": "Monoist Sentry",
+      "count": 1
+    },
+    {
+      "name": "Namazu Trader",
+      "count": 1
+    },
+    {
+      "name": "Plains",
+      "count": 12
+    },
+    {
+      "name": "Qarsi Revenant",
+      "count": 1
+    },
+    {
+      "name": "Rictus Robber",
+      "count": 1
+    },
+    {
+      "name": "Rot-Curse Rakshasa",
+      "count": 1
+    },
+    {
+      "name": "Ruin-Lurker Bat",
+      "count": 1
+    },
+    {
+      "name": "Soaring Stoneglider",
+      "count": 1
+    },
+    {
+      "name": "Spectacular Spider-Man",
+      "count": 1
+    },
+    {
+      "name": "Spellbook Vendor",
+      "count": 1
+    },
+    {
+      "name": "Spiteful Hexmage",
+      "count": 1
+    },
+    {
+      "name": "Stiltzkin, Moogle Merchant",
+      "count": 1
+    },
+    {
+      "name": "Sundial, Dawn Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Sunset Saboteur",
+      "count": 1
+    },
+    {
+      "name": "Swamp",
+      "count": 12
+    },
+    {
+      "name": "Tenth District Hero",
+      "count": 1
+    },
+    {
+      "name": "The Speed Demon",
+      "count": 1
+    },
+    {
+      "name": "Thornplate Intimidator",
+      "count": 1
+    },
+    {
+      "name": "Trained Arynx",
+      "count": 1
+    },
+    {
+      "name": "Vampire Nighthawk",
+      "count": 1
+    },
+    {
+      "name": "Yargle, Glutton of Urborg",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "name": "纯黑中速",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Appendage Amalgam",
+      "count": 1
+    },
+    {
+      "name": "Avenger of the Fallen",
+      "count": 1
+    },
+    {
+      "name": "Boneyard Desecrator",
+      "count": 1
+    },
+    {
+      "name": "Broodrage Mycoid",
+      "count": 1
+    },
+    {
+      "name": "Common Crook",
+      "count": 1
+    },
+    {
+      "name": "Daggerfang Duo",
+      "count": 1
+    },
+    {
+      "name": "Dark Matter Manipulator",
+      "count": 1
+    },
+    {
+      "name": "Dawnhand Eulogist",
+      "count": 1
+    },
+    {
+      "name": "Desperate Bloodseeker",
+      "count": 1
+    },
+    {
+      "name": "Diregraf Ghoul",
+      "count": 1
+    },
+    {
+      "name": "Dream Beavers",
+      "count": 1
+    },
+    {
+      "name": "Faerie Dreamthief",
+      "count": 1
+    },
+    {
+      "name": "Gas Guzzler",
+      "count": 1
+    },
+    {
+      "name": "Greedy Freebooter",
+      "count": 1
+    },
+    {
+      "name": "Kalakscion, Hunger Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Knight of Malice",
+      "count": 1
+    },
+    {
+      "name": "Mintstrosity",
+      "count": 1
+    },
+    {
+      "name": "Monoist Sentry",
+      "count": 1
+    },
+    {
+      "name": "Mutant Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Namazu Trader",
+      "count": 1
+    },
+    {
+      "name": "Overlord of the Balemurk",
+      "count": 1
+    },
+    {
+      "name": "Preacher of the Schism",
+      "count": 1
+    },
+    {
+      "name": "Qarsi Revenant",
+      "count": 1
+    },
+    {
+      "name": "Rictus Robber",
+      "count": 1
+    },
+    {
+      "name": "Rot-Curse Rakshasa",
+      "count": 1
+    },
+    {
+      "name": "Scarblade Scout",
+      "count": 1
+    },
+    {
+      "name": "Sinkhole Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Spiteful Hexmage",
+      "count": 1
+    },
+    {
+      "name": "Sunset Saboteur",
+      "count": 1
+    },
+    {
+      "name": "Swamp",
+      "count": 24
+    },
+    {
+      "name": "The Speed Demon",
+      "count": 1
+    },
+    {
+      "name": "Thornplate Intimidator",
+      "count": 1
+    },
+    {
+      "name": "Vampire Nighthawk",
+      "count": 1
+    },
+    {
+      "name": "Venomized Cat",
+      "count": 1
+    },
+    {
+      "name": "Wreckage Wickerfolk",
+      "count": 1
+    },
+    {
+      "name": "Wretched Doll",
+      "count": 1
+    },
+    {
+      "name": "Yargle, Glutton of Urborg",
+      "count": 1
+    }
+  ]
+}

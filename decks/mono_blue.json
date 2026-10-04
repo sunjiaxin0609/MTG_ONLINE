@@ -1,0 +1,154 @@
+{
+  "name": "纯蓝控制",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Aegis Turtle",
+      "count": 1
+    },
+    {
+      "name": "Aerial Doombot",
+      "count": 1
+    },
+    {
+      "name": "Benevolent River Spirit",
+      "count": 1
+    },
+    {
+      "name": "Caelorna, Coral Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Canyon Crab",
+      "count": 1
+    },
+    {
+      "name": "Cogwork Wrestler",
+      "count": 1
+    },
+    {
+      "name": "Daring Thunder-Thief",
+      "count": 1
+    },
+    {
+      "name": "Diminisher Witch",
+      "count": 1
+    },
+    {
+      "name": "Fear of Impostors",
+      "count": 1
+    },
+    {
+      "name": "Fear of Isolation",
+      "count": 1
+    },
+    {
+      "name": "Flexible Waterbender",
+      "count": 1
+    },
+    {
+      "name": "Glitch Ghost Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Hermitic Nautilus",
+      "count": 1
+    },
+    {
+      "name": "Humbling Elder",
+      "count": 1
+    },
+    {
+      "name": "Hydraulic Helper",
+      "count": 1
+    },
+    {
+      "name": "Iguana Parrot",
+      "count": 1
+    },
+    {
+      "name": "Illvoi Galeblade",
+      "count": 1
+    },
+    {
+      "name": "Island",
+      "count": 24
+    },
+    {
+      "name": "Kang the Conqueror",
+      "count": 1
+    },
+    {
+      "name": "Keen Buccaneer",
+      "count": 1
+    },
+    {
+      "name": "Kitesail Larcenist",
+      "count": 1
+    },
+    {
+      "name": "Kulrath Mystic",
+      "count": 1
+    },
+    {
+      "name": "Lightshell Duo",
+      "count": 1
+    },
+    {
+      "name": "Living Lectern",
+      "count": 1
+    },
+    {
+      "name": "Merfolk Coralsmith",
+      "count": 1
+    },
+    {
+      "name": "Mysterio's Phantasm",
+      "count": 1
+    },
+    {
+      "name": "Overlord of the Floodpits",
+      "count": 1
+    },
+    {
+      "name": "Rune-Sealed Wall",
+      "count": 1
+    },
+    {
+      "name": "Skystreak Engineer",
+      "count": 1
+    },
+    {
+      "name": "Snaremaster Sprite",
+      "count": 1
+    },
+    {
+      "name": "Spectral Sailor",
+      "count": 1
+    },
+    {
+      "name": "Spyglass Siren",
+      "count": 1
+    },
+    {
+      "name": "Stoic Sphinx",
+      "count": 1
+    },
+    {
+      "name": "Unwelcome Sprite",
+      "count": 1
+    },
+    {
+      "name": "Voracious Greatshark",
+      "count": 1
+    },
+    {
+      "name": "Yargle, Goliath of Otaria",
+      "count": 1
+    },
+    {
+      "name": "Yue, the Moon Spirit",
+      "count": 1
+    }
+  ]
+}

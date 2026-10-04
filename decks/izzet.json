@@ -1,0 +1,158 @@
+{
+  "name": "红蓝法术",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Aegis Turtle",
+      "count": 1
+    },
+    {
+      "name": "Benevolent River Spirit",
+      "count": 1
+    },
+    {
+      "name": "Bonehoard Dracosaur",
+      "count": 1
+    },
+    {
+      "name": "Brazen Scourge",
+      "count": 1
+    },
+    {
+      "name": "Caelorna, Coral Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Charging Strifeknight",
+      "count": 1
+    },
+    {
+      "name": "Cogwork Wrestler",
+      "count": 1
+    },
+    {
+      "name": "Cunning Coyote",
+      "count": 1
+    },
+    {
+      "name": "Curse-Marred Demon",
+      "count": 1
+    },
+    {
+      "name": "Diminisher Witch",
+      "count": 1
+    },
+    {
+      "name": "Embereth Veteran",
+      "count": 1
+    },
+    {
+      "name": "Endrider Catalyzer",
+      "count": 1
+    },
+    {
+      "name": "Fear of Isolation",
+      "count": 1
+    },
+    {
+      "name": "Fleeting Effigy",
+      "count": 1
+    },
+    {
+      "name": "Gila Courser",
+      "count": 1
+    },
+    {
+      "name": "Gilded Ghoda",
+      "count": 1
+    },
+    {
+      "name": "Goblin Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Greasewrench Goblin",
+      "count": 1
+    },
+    {
+      "name": "Humbling Elder",
+      "count": 1
+    },
+    {
+      "name": "Hydraulic Helper",
+      "count": 1
+    },
+    {
+      "name": "Island",
+      "count": 12
+    },
+    {
+      "name": "Kang the Conqueror",
+      "count": 1
+    },
+    {
+      "name": "Magmatic Hellkite",
+      "count": 1
+    },
+    {
+      "name": "Mine Raider",
+      "count": 1
+    },
+    {
+      "name": "Mountain",
+      "count": 12
+    },
+    {
+      "name": "Mysterio's Phantasm",
+      "count": 1
+    },
+    {
+      "name": "Piggy Bank",
+      "count": 1
+    },
+    {
+      "name": "Quaketusk Boar",
+      "count": 1
+    },
+    {
+      "name": "Ravenous Giant",
+      "count": 1
+    },
+    {
+      "name": "Reckless Lackey",
+      "count": 1
+    },
+    {
+      "name": "Rough Rhino Cavalry",
+      "count": 1
+    },
+    {
+      "name": "Rune-Sealed Wall",
+      "count": 1
+    },
+    {
+      "name": "Soulbright Seeker",
+      "count": 1
+    },
+    {
+      "name": "Sting-Slinger",
+      "count": 1
+    },
+    {
+      "name": "Stingerback Terror",
+      "count": 1
+    },
+    {
+      "name": "Stoic Sphinx",
+      "count": 1
+    },
+    {
+      "name": "Tyrox, Saurid Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Volcanic Villain",
+      "count": 1
+    }
+  ]
+}

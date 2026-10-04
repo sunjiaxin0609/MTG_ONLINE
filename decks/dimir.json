@@ -1,0 +1,158 @@
+{
+  "name": "蓝黑控制",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Aegis Turtle",
+      "count": 1
+    },
+    {
+      "name": "Appendage Amalgam",
+      "count": 1
+    },
+    {
+      "name": "Avenger of the Fallen",
+      "count": 1
+    },
+    {
+      "name": "Benevolent River Spirit",
+      "count": 1
+    },
+    {
+      "name": "Boneyard Desecrator",
+      "count": 1
+    },
+    {
+      "name": "Caelorna, Coral Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Cogwork Wrestler",
+      "count": 1
+    },
+    {
+      "name": "Daggerfang Duo",
+      "count": 1
+    },
+    {
+      "name": "Daring Thunder-Thief",
+      "count": 1
+    },
+    {
+      "name": "Dark Matter Manipulator",
+      "count": 1
+    },
+    {
+      "name": "Desperate Bloodseeker",
+      "count": 1
+    },
+    {
+      "name": "Diminisher Witch",
+      "count": 1
+    },
+    {
+      "name": "Diregraf Ghoul",
+      "count": 1
+    },
+    {
+      "name": "Fear of Isolation",
+      "count": 1
+    },
+    {
+      "name": "Gas Guzzler",
+      "count": 1
+    },
+    {
+      "name": "Humbling Elder",
+      "count": 1
+    },
+    {
+      "name": "Hydraulic Helper",
+      "count": 1
+    },
+    {
+      "name": "Island",
+      "count": 12
+    },
+    {
+      "name": "Kalakscion, Hunger Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Kang the Conqueror",
+      "count": 1
+    },
+    {
+      "name": "Knight of Malice",
+      "count": 1
+    },
+    {
+      "name": "Monoist Sentry",
+      "count": 1
+    },
+    {
+      "name": "Mysterio's Phantasm",
+      "count": 1
+    },
+    {
+      "name": "Namazu Trader",
+      "count": 1
+    },
+    {
+      "name": "Oildeep Gearhulk",
+      "count": 1
+    },
+    {
+      "name": "Preacher of the Schism",
+      "count": 1
+    },
+    {
+      "name": "Qarsi Revenant",
+      "count": 1
+    },
+    {
+      "name": "Rot-Curse Rakshasa",
+      "count": 1
+    },
+    {
+      "name": "Rune-Sealed Wall",
+      "count": 1
+    },
+    {
+      "name": "Scarblade Scout",
+      "count": 1
+    },
+    {
+      "name": "Spiteful Hexmage",
+      "count": 1
+    },
+    {
+      "name": "Stoic Sphinx",
+      "count": 1
+    },
+    {
+      "name": "Sunset Saboteur",
+      "count": 1
+    },
+    {
+      "name": "Swamp",
+      "count": 12
+    },
+    {
+      "name": "The Speed Demon",
+      "count": 1
+    },
+    {
+      "name": "Vampire Nighthawk",
+      "count": 1
+    },
+    {
+      "name": "Yargle, Glutton of Urborg",
+      "count": 1
+    },
+    {
+      "name": "Yargle, Goliath of Otaria",
+      "count": 1
+    }
+  ]
+}

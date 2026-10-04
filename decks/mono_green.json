@@ -1,0 +1,154 @@
+{
+  "name": "纯绿猛袭",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Axebane Ferox",
+      "count": 1
+    },
+    {
+      "name": "Bristlebud Farmer",
+      "count": 1
+    },
+    {
+      "name": "Cactuar",
+      "count": 1
+    },
+    {
+      "name": "Champion of Dusan",
+      "count": 1
+    },
+    {
+      "name": "Colossadactyl",
+      "count": 1
+    },
+    {
+      "name": "Dawn's Light Archer",
+      "count": 1
+    },
+    {
+      "name": "Dragon Sniper",
+      "count": 1
+    },
+    {
+      "name": "Eager Trufflesnout",
+      "count": 1
+    },
+    {
+      "name": "Edge Rover",
+      "count": 1
+    },
+    {
+      "name": "Fear of Exposure",
+      "count": 1
+    },
+    {
+      "name": "Forest",
+      "count": 24
+    },
+    {
+      "name": "Gigantosaurus",
+      "count": 1
+    },
+    {
+      "name": "Grasping Longneck",
+      "count": 1
+    },
+    {
+      "name": "Hazard of the Dunes",
+      "count": 1
+    },
+    {
+      "name": "Jibbirik Omnivore",
+      "count": 1
+    },
+    {
+      "name": "Lasyd Prowler",
+      "count": 1
+    },
+    {
+      "name": "Loxodon Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Lys Alana Dignitary",
+      "count": 1
+    },
+    {
+      "name": "Lys Alana Informant",
+      "count": 1
+    },
+    {
+      "name": "Mistbreath Elder",
+      "count": 1
+    },
+    {
+      "name": "Overlord of the Hauntwoods",
+      "count": 1
+    },
+    {
+      "name": "Pugnacious Hammerskull",
+      "count": 1
+    },
+    {
+      "name": "Rebellious Captives",
+      "count": 1
+    },
+    {
+      "name": "Reptil, Dinomorpher",
+      "count": 1
+    },
+    {
+      "name": "Scrapshooter",
+      "count": 1
+    },
+    {
+      "name": "Sentinel of the Nameless City",
+      "count": 1
+    },
+    {
+      "name": "Serpent Specialist",
+      "count": 1
+    },
+    {
+      "name": "She-Hulk, Jade Defender",
+      "count": 1
+    },
+    {
+      "name": "Slumbering Trudge",
+      "count": 1
+    },
+    {
+      "name": "Sparring Dummy",
+      "count": 1
+    },
+    {
+      "name": "Sureshot Sower",
+      "count": 1
+    },
+    {
+      "name": "Terrian, World Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Territorial Witchstalker",
+      "count": 1
+    },
+    {
+      "name": "Turtle-Duck",
+      "count": 1
+    },
+    {
+      "name": "Vitu-Ghazi Inspector",
+      "count": 1
+    },
+    {
+      "name": "Wary Thespian",
+      "count": 1
+    },
+    {
+      "name": "Wary Watchdog",
+      "count": 1
+    }
+  ]
+}

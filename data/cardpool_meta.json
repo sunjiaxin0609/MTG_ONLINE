@@ -1,0 +1,17 @@
+{
+  "source": "Scryfall /cards/search?q=legal:standard",
+  "fetched_at": "2026-10-04 13:12:11",
+  "count": 5164,
+  "layouts": {
+    "transform": 77,
+    "normal": 4823,
+    "prepare": 57,
+    "adventure": 88,
+    "saga": 52,
+    "class": 14,
+    "split": 28,
+    "modal_dfc": 10,
+    "case": 12,
+    "meld": 3
+  }
+}

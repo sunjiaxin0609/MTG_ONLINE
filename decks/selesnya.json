@@ -1,0 +1,158 @@
+{
+  "name": "白绿铺场",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Axebane Ferox",
+      "count": 1
+    },
+    {
+      "name": "Bristlebud Farmer",
+      "count": 1
+    },
+    {
+      "name": "Cactuar",
+      "count": 1
+    },
+    {
+      "name": "Champion of Dusan",
+      "count": 1
+    },
+    {
+      "name": "Colossadactyl",
+      "count": 1
+    },
+    {
+      "name": "Dawn's Light Archer",
+      "count": 1
+    },
+    {
+      "name": "Dragon Sniper",
+      "count": 1
+    },
+    {
+      "name": "Eager Trufflesnout",
+      "count": 1
+    },
+    {
+      "name": "Edge Rover",
+      "count": 1
+    },
+    {
+      "name": "Fear of Exposure",
+      "count": 1
+    },
+    {
+      "name": "Forest",
+      "count": 12
+    },
+    {
+      "name": "Gigantosaurus",
+      "count": 1
+    },
+    {
+      "name": "Guardian of the Great Door",
+      "count": 1
+    },
+    {
+      "name": "Hazard of the Dunes",
+      "count": 1
+    },
+    {
+      "name": "Knight of Grace",
+      "count": 1
+    },
+    {
+      "name": "Lasyd Prowler",
+      "count": 1
+    },
+    {
+      "name": "Lys Alana Dignitary",
+      "count": 1
+    },
+    {
+      "name": "Mistbreath Elder",
+      "count": 1
+    },
+    {
+      "name": "Overlord of the Hauntwoods",
+      "count": 1
+    },
+    {
+      "name": "Plains",
+      "count": 12
+    },
+    {
+      "name": "Pugnacious Hammerskull",
+      "count": 1
+    },
+    {
+      "name": "Reptil, Dinomorpher",
+      "count": 1
+    },
+    {
+      "name": "Ruin-Lurker Bat",
+      "count": 1
+    },
+    {
+      "name": "Scrapshooter",
+      "count": 1
+    },
+    {
+      "name": "Sentinel of the Nameless City",
+      "count": 1
+    },
+    {
+      "name": "Seraphic Steed",
+      "count": 1
+    },
+    {
+      "name": "She-Hulk, Jade Defender",
+      "count": 1
+    },
+    {
+      "name": "Slumbering Trudge",
+      "count": 1
+    },
+    {
+      "name": "Soaring Stoneglider",
+      "count": 1
+    },
+    {
+      "name": "Spectacular Spider-Man",
+      "count": 1
+    },
+    {
+      "name": "Spellbook Vendor",
+      "count": 1
+    },
+    {
+      "name": "Sundial, Dawn Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Tenth District Hero",
+      "count": 1
+    },
+    {
+      "name": "Terrian, World Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Territorial Witchstalker",
+      "count": 1
+    },
+    {
+      "name": "Trained Arynx",
+      "count": 1
+    },
+    {
+      "name": "Trostani, Three Whispers",
+      "count": 1
+    },
+    {
+      "name": "Turtle-Duck",
+      "count": 1
+    }
+  ]
+}

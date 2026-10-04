@@ -1,0 +1,154 @@
+{
+  "name": "纯白快攻",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Action News Crew",
+      "count": 1
+    },
+    {
+      "name": "Angel of Finality",
+      "count": 1
+    },
+    {
+      "name": "Bridled Bighorn",
+      "count": 1
+    },
+    {
+      "name": "Brightblade Stoat",
+      "count": 1
+    },
+    {
+      "name": "Brightfield Glider",
+      "count": 1
+    },
+    {
+      "name": "Brightspear Zealot",
+      "count": 1
+    },
+    {
+      "name": "Captain Marvel, Earth's Protector",
+      "count": 1
+    },
+    {
+      "name": "Crowd of True Believers",
+      "count": 1
+    },
+    {
+      "name": "Cursed Courtier",
+      "count": 1
+    },
+    {
+      "name": "Dragonback Lancer",
+      "count": 1
+    },
+    {
+      "name": "Earth Kingdom Jailer",
+      "count": 1
+    },
+    {
+      "name": "Envoy of Okinec Ahau",
+      "count": 1
+    },
+    {
+      "name": "Fear of Surveillance",
+      "count": 1
+    },
+    {
+      "name": "Flight-Deck Coordinator",
+      "count": 1
+    },
+    {
+      "name": "Glider Kids",
+      "count": 1
+    },
+    {
+      "name": "Guardian of the Great Door",
+      "count": 1
+    },
+    {
+      "name": "Healer's Hawk",
+      "count": 1
+    },
+    {
+      "name": "Knight of Grace",
+      "count": 1
+    },
+    {
+      "name": "Lyra, Archangel of Dawn",
+      "count": 1
+    },
+    {
+      "name": "Plains",
+      "count": 24
+    },
+    {
+      "name": "Ruin-Lurker Bat",
+      "count": 1
+    },
+    {
+      "name": "Savannah Lions",
+      "count": 1
+    },
+    {
+      "name": "Seasoned Warrenguard",
+      "count": 1
+    },
+    {
+      "name": "Shore Lurker",
+      "count": 1
+    },
+    {
+      "name": "Soaring Stoneglider",
+      "count": 1
+    },
+    {
+      "name": "Spectacular Spider-Man",
+      "count": 1
+    },
+    {
+      "name": "Spellbook Vendor",
+      "count": 1
+    },
+    {
+      "name": "Stagecoach Security",
+      "count": 1
+    },
+    {
+      "name": "Stiltzkin, Moogle Merchant",
+      "count": 1
+    },
+    {
+      "name": "Sundial, Dawn Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Tenth District Hero",
+      "count": 1
+    },
+    {
+      "name": "Trained Arynx",
+      "count": 1
+    },
+    {
+      "name": "Unswerving Sloth",
+      "count": 1
+    },
+    {
+      "name": "Vanguard Seraph",
+      "count": 1
+    },
+    {
+      "name": "Wakandan Drone Flock",
+      "count": 1
+    },
+    {
+      "name": "Wanderbrine Trapper",
+      "count": 1
+    },
+    {
+      "name": "Water Tribe Captain",
+      "count": 1
+    }
+  ]
+}

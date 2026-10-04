@@ -1,0 +1,154 @@
+{
+  "name": "纯红烧",
+  "format": "standard",
+  "cards": [
+    {
+      "name": "Angry Rabble",
+      "count": 1
+    },
+    {
+      "name": "Bonehoard Dracosaur",
+      "count": 1
+    },
+    {
+      "name": "Brazen Scourge",
+      "count": 1
+    },
+    {
+      "name": "Charging Strifeknight",
+      "count": 1
+    },
+    {
+      "name": "Cunning Coyote",
+      "count": 1
+    },
+    {
+      "name": "Curse-Marred Demon",
+      "count": 1
+    },
+    {
+      "name": "Dwarven Mauler",
+      "count": 1
+    },
+    {
+      "name": "Embereth Veteran",
+      "count": 1
+    },
+    {
+      "name": "Endrider Catalyzer",
+      "count": 1
+    },
+    {
+      "name": "Fleeting Effigy",
+      "count": 1
+    },
+    {
+      "name": "Gila Courser",
+      "count": 1
+    },
+    {
+      "name": "Gilded Ghoda",
+      "count": 1
+    },
+    {
+      "name": "Goblin Surveyor",
+      "count": 1
+    },
+    {
+      "name": "Greasewrench Goblin",
+      "count": 1
+    },
+    {
+      "name": "Jeong Jeong, the Deserter",
+      "count": 1
+    },
+    {
+      "name": "Kavaron Harrier",
+      "count": 1
+    },
+    {
+      "name": "Krenko's Buzzcrusher",
+      "count": 1
+    },
+    {
+      "name": "Magmatic Hellkite",
+      "count": 1
+    },
+    {
+      "name": "Mai, Jaded Edge",
+      "count": 1
+    },
+    {
+      "name": "Mine Raider",
+      "count": 1
+    },
+    {
+      "name": "Mountain",
+      "count": 24
+    },
+    {
+      "name": "Piggy Bank",
+      "count": 1
+    },
+    {
+      "name": "Quaketusk Boar",
+      "count": 1
+    },
+    {
+      "name": "Ravenous Giant",
+      "count": 1
+    },
+    {
+      "name": "Reckless Lackey",
+      "count": 1
+    },
+    {
+      "name": "Rescue Leopard",
+      "count": 1
+    },
+    {
+      "name": "Ripchain Razorkin",
+      "count": 1
+    },
+    {
+      "name": "Rough Rhino Cavalry",
+      "count": 1
+    },
+    {
+      "name": "Shock Brigade",
+      "count": 1
+    },
+    {
+      "name": "Soulbright Seeker",
+      "count": 1
+    },
+    {
+      "name": "Stark Industries Executive",
+      "count": 1
+    },
+    {
+      "name": "Sting-Slinger",
+      "count": 1
+    },
+    {
+      "name": "Stingerback Terror",
+      "count": 1
+    },
+    {
+      "name": "Tyrox, Saurid Tyrant",
+      "count": 1
+    },
+    {
+      "name": "Volcanic Villain",
+      "count": 1
+    },
+    {
+      "name": "Warren Torchmaster",
+      "count": 1
+    },
+    {
+      "name": "Yuyan Archers",
+      "count": 1
+    }
+  ]
+}
