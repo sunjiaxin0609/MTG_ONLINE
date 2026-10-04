@@ -72,10 +72,15 @@ class Cost:
             parts.append("横置")
         if self.sacrifice_self:
             parts.append("牺牲此永久物")
+        if self.sacrifice_other:
+            parts.append(f"牺牲{self.sacrifice_other.describe()}")
         if self.life:
             parts.append(f"支付 {self.life} 点生命")
         if self.discard:
             parts.append(f"弃 {self.discard} 张牌")
+        if self.remove_counters:
+            kind, amount = self.remove_counters
+            parts.append(f"移去 {amount} 个{kind}指示物")
         return "，".join(parts) if parts else "免费"
 
 

@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
@@ -40,6 +41,9 @@ RESAMPLE = Image.Resampling.LANCZOS
 
 SMALL = "small"
 NORMAL = "normal"
+
+#: 已缩放 PhotoImage 的内存上限（尺寸档增多后按 LRU 淘汰，避免内存膨胀）
+MAX_PHOTO_CACHE = 300
 
 _FONTS: dict[int, ImageFont.FreeTypeFont] = {}
 
@@ -87,6 +91,7 @@ class ImageCache:
 
         self._pil: dict[str, Any] = {}                 # token -> 已打开的原始图
         self._photos: dict[tuple[str, int, int, bool], Any] = {}
+        self._order: "OrderedDict[Any, None]" = OrderedDict()  # _photos 的 LRU 顺序
         self._pending: set[str] = set()                        # token
         self._callbacks: dict[str, list[tuple[int, int, bool, Callable]]] = {}
         self._failed: set[str] = set()
@@ -140,11 +145,22 @@ class ImageCache:
                 return None
         key = (token, width, height, dim)
         if key in self._photos:
+            self._order.move_to_end(key)
             return self._photos[key]
         image = self._load_pil(token, card_id, kind)
         if image is None:
             return None
         return self._make_photo(token, image, width, height, dim)
+
+    def _store(self, key: Any, photo: Any) -> Any:
+        """写入 PhotoImage 并按 LRU 淘汰最旧条目。"""
+        self._photos[key] = photo
+        self._order[key] = None
+        self._order.move_to_end(key)
+        while len(self._order) > MAX_PHOTO_CACHE:
+            old_key, _ = self._order.popitem(last=False)
+            self._photos.pop(old_key, None)
+        return photo
 
     def placeholder(self, data: Any, width: int, height: int, dim: bool = False):
         """没有官方卡图时的程序占位卡（衍生物、双面卡背面等）。"""
@@ -152,6 +168,7 @@ class ImageCache:
             return None
         key = ("__placeholder__", data.card_id, width, height, dim)
         if key in self._photos:
+            self._order.move_to_end(key)
             return self._photos[key]
 
         image = Image.new("RGB", (width, height), (233, 229, 218))
@@ -181,8 +198,7 @@ class ImageCache:
             image = ImageEnhance.Brightness(image).enhance(0.6)
 
         photo = ImageTk.PhotoImage(image)
-        self._photos[key] = photo
-        return photo
+        return self._store(key, photo)
 
     def _make_photo(self, token: str, image, width: int, height: int, dim: bool = False):
         source = image
@@ -190,8 +206,7 @@ class ImageCache:
             source = ImageEnhance.Brightness(image).enhance(0.55)
             source = ImageEnhance.Color(source).enhance(0.55)
         photo = ImageTk.PhotoImage(source.resize((width, height), RESAMPLE))
-        self._photos[(token, width, height, dim)] = photo
-        return photo
+        return self._store((token, width, height, dim), photo)
 
     # ---------------------------------------------------------------- 异步取
     def request(

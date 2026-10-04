@@ -319,6 +319,9 @@ class Permanent:
     #: 本回合各触发式异能已触发的次数，用于掐断无限循环（如"进场生成衍生物"套娃）
     trigger_counts: dict[str, int] = field(default_factory=dict)
 
+    #: 本回合已启动过的启动式异能下标（用于"每回合只能启动一次"）
+    activated_this_turn: set[int] = field(default_factory=set)
+
     #: 层系统产生的临时修正（每次重算时清空）
     _pt_modify: int = 0
     _pt_modify_t: int = 0

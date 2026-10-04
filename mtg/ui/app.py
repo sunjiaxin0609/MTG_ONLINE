@@ -1,116 +1,46 @@
-"""tkinter 桌面主界面。
+"""tkinter 桌面主界面：组装骨架、推进引擎、分发决策。
 
-布局自上而下：对手信息条 → 对手战场 → 战斗/堆叠区 → 我方战场 → 手牌 → 操作条，
-右侧是滚动日志。所有交互都通过引擎的"决策点"接口，UI 只负责收集人类输入。
+渲染细节在 ``board.py``，弹窗在 ``dialogs.py``，日志在 ``log_panel.py``，
+尺寸计算在 ``layout.py``。本文件只保留窗口组装与交互分发。
 """
 from __future__ import annotations
 
-import os
-import re
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 from typing import Any
 
 from ..ai.agent import HeuristicAgent
 from ..cards.carddb import CardDB
-from ..cards.decks import auto_build, deck_summary, load_deck, save_deck
+from ..cards.decks import auto_build, load_deck
 from ..engine.game import Action, Game
 from ..engine.player import Player
-from ..engine.types import Phase, Step, Zone
-from .card_widget import ART_ENABLED, CardWidget, card_tooltip, set_art_enabled, tooltip
+from ..engine.types import Phase
+from . import board, dialogs, layout
+from .card_widget import set_art_enabled
 from .images import PIL_AVAILABLE, get_cache
+from .log_panel import LogPanel
 from .theme import (
-    ATTACKING,
+    AMBER,
     BG,
-    BLOCKING,
-    BTN_ACCENT,
     BTN_BG,
     BTN_DANGER,
     BTN_FG,
     FONT_BOLD,
-    FONT_LOG,
     FONT_NORMAL,
     FONT_SMALL,
     FONT_TITLE,
-    HIGHLIGHT,
+    OURS,
     PANEL,
     PANEL_DARK,
-    SELECTED,
     TEXT,
     TEXT_DIM,
 )
 
-DECKS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "decks")
+#: 双方信息条的固定高度
+INFO_H = 22
 
-COLOR_CHOICES = [
-    ("白 (W)", ["W"]),
-    ("蓝 (U)", ["U"]),
-    ("黑 (B)", ["B"]),
-    ("红 (R)", ["R"]),
-    ("绿 (G)", ["G"]),
-    ("白绿 (GW)", ["G", "W"]),
-    ("蓝黑 (UB)", ["U", "B"]),
-    ("红白 (RW)", ["R", "W"]),
-    ("黑绿 (BG)", ["B", "G"]),
-    ("红蓝 (UR)", ["U", "R"]),
-    ("红绿 (RG)", ["R", "G"]),
-    ("黑白 (WB)", ["W", "B"]),
-]
-
-
-class CardStrip(tk.Frame):
-    """卡片容器：按宽度自动换行，内容超出高度时可用滚轮查看。
-
-    战场上一旦刷出十几个衍生物，固定横排会被裁掉；这里保证每一张都看得到。
-    """
-
-    def __init__(self, master: tk.Misc, bg: str) -> None:
-        super().__init__(master, bg=bg)
-        # canvas 的请求尺寸压到最小，避免反过来把父容器撑大（高度由父容器说了算）
-        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0, width=1, height=1)
-        self.bar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.inner = tk.Frame(self.canvas, bg=bg)
-        self._window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
-        self.canvas.configure(yscrollcommand=self._on_scroll_set)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.bar.pack(side="right", fill="y")
-        self._items: list[Any] = []
-        self._columns = 0
-        self.inner.bind("<Configure>", self._on_inner)
-        self.canvas.bind("<Configure>", self._on_canvas)
-
-    def add(self, widget: Any) -> None:
-        widget.wheel_handler = self._scroll
-        self._items.append(widget)
-        self._relayout()
-
-    def _on_scroll_set(self, first: str, last: str) -> None:
-        """内容没超出高度时自动藏起滚动条。"""
-        need = not (float(first) <= 0.0 and float(last) >= 1.0)
-        if need and not self.bar.winfo_ismapped():
-            self.bar.pack(side="right", fill="y")
-        elif not need and self.bar.winfo_ismapped():
-            self.bar.pack_forget()
-        self.bar.set(first, last)
-
-    def _on_inner(self, _event: tk.Event) -> None:
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _on_canvas(self, event: tk.Event) -> None:
-        self.canvas.itemconfigure(self._window, width=event.width)
-        # 用略宽松的间距估算列数，这样滚动条出现/消失时列数不会跳变
-        columns = max(1, event.width // (CardWidget.WIDTH + 4))
-        if columns != self._columns:
-            self._columns = columns
-            self._relayout()
-
-    def _relayout(self) -> None:
-        columns = max(1, self._columns)
-        for index, widget in enumerate(self._items):
-            widget.grid(row=index // columns, column=index % columns, padx=2, pady=2)
-
-    def _scroll(self, event: tk.Event) -> None:
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+#: 法术力颜色字母 → 中文（产费选色菜单用）
+_MANA_CN = {"W": "白", "U": "蓝", "B": "黑", "R": "红", "G": "绿", "C": "无色"}
 
 
 class MTGApp(tk.Tk):
@@ -120,8 +50,9 @@ class MTGApp(tk.Tk):
         super().__init__()
         self.title("MTGO — 万智牌标准赛制（本地对战）")
         self.configure(bg=BG)
-        self.geometry("1400x900")
-        self.minsize(1180, 780)
+        width, height = layout.window_size(self.winfo_screenwidth(), self.winfo_screenheight())
+        self.geometry(f"{width}x{height}")
+        self.minsize(*layout.WINDOW_MIN)
 
         self.db: CardDB | None = None
         self.game: Game | None = None
@@ -136,90 +67,155 @@ class MTGApp(tk.Tk):
         self.auto_pass = tk.BooleanVar(value=False)
         self.art_var = tk.BooleanVar(value=True)
 
-        self._widget_refs: list[Any] = []
-        self._log_index = 0
+        self._resize_job: str | None = None
+        self._log_user_set = False
 
         self._build_shell()
         self.after(100, self._bootstrap)
 
     # ================================================================ 骨架
     def _build_shell(self) -> None:
-        # 顶部：标题 + 新对局按钮
-        header = tk.Frame(self, bg=PANEL_DARK, height=38)
-        header.pack(fill="x", side="top")
-        header.pack_propagate(False)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
-        tk.Label(header, text="MTGO", bg=PANEL_DARK, fg=TEXT, font=FONT_TITLE).pack(side="left", padx=12)
-        self.status_var = tk.StringVar(value="正在加载卡池…")
-        tk.Label(header, textvariable=self.status_var, bg=PANEL_DARK, fg=TEXT_DIM, font=FONT_NORMAL).pack(
-            side="left", padx=16
-        )
+        # 顶部固定条：左侧回合·阶段条，右侧卡池信息与功能按钮
+        self.header = tk.Frame(self, bg=PANEL_DARK, height=layout.FIXED_HEIGHTS["header"])
+        self.header.grid(row=0, column=0, sticky="ew")
+        self.header.pack_propagate(False)
+
+        # 右侧功能按钮（先放，窄窗时优先保留）
         tk.Button(
-            header, text="新对局", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
+            self.header, text="新对局", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
             command=self.new_game_dialog,
         ).pack(side="right", padx=6, pady=6)
         tk.Button(
-            header, text="牌库/坟场", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
+            self.header, text="牌库/坟场", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
             command=self.show_zones,
         ).pack(side="right", padx=4, pady=6)
         tk.Button(
-            header, text="卡图", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
+            self.header, text="卡图", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, relief="flat",
             command=self.art_menu,
         ).pack(side="right", padx=4, pady=6)
         tk.Checkbutton(
-            header, text="自动让过", variable=self.auto_pass, bg=PANEL_DARK, fg=TEXT,
+            self.header, text="自动让过", variable=self.auto_pass, bg=PANEL_DARK, fg=TEXT,
             font=FONT_NORMAL, selectcolor=PANEL,
         ).pack(side="right", padx=8)
+        # 卡池 / 卡图状态（原先在左侧，现固定到顶部右）
+        self.status_var = tk.StringVar(value="正在加载卡池…")
+        tk.Label(self.header, textvariable=self.status_var, bg=PANEL_DARK, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side="right", padx=12)
 
+        # 左侧：回合·阶段条（回合信息 70% / 当前阶段 30%）
+        self.turnbar = tk.Frame(self.header, bg=PANEL_DARK)
+        self.turnbar.pack(side="left", fill="both", expand=True, padx=12)
+        self.turnbar.grid_columnconfigure(0, weight=7)
+        self.turnbar.grid_columnconfigure(1, weight=3)
+        self.turnbar.grid_rowconfigure(0, weight=1)
+        turn_box = tk.Frame(self.turnbar, bg=PANEL_DARK)
+        turn_box.grid(row=0, column=0, sticky="w")
+        self.turn_label = tk.Label(turn_box, text="", bg=PANEL_DARK, fg=TEXT, font=FONT_TITLE)
+        self.turn_label.pack(side="left")
+        self.side_label = tk.Label(turn_box, text="", bg=PANEL_DARK, fg=OURS, font=FONT_BOLD)
+        self.side_label.pack(side="left", padx=(8, 0))
+        self.phase_label = tk.Label(self.turnbar, text="", bg=PANEL_DARK, fg=AMBER, font=FONT_BOLD)
+        self.phase_label.grid(row=0, column=1, sticky="w")
+
+        # 主体：左牌桌 + 右日志
         body = tk.Frame(self, bg=BG)
-        body.pack(fill="both", expand=True)
+        body.grid(row=1, column=0, sticky="nsew")
+        body.grid_rowconfigure(0, weight=1)
+        body.grid_columnconfigure(0, weight=1)
 
-        # 左：牌桌；右：日志
         self.board_frame = tk.Frame(body, bg=BG)
-        self.board_frame.pack(side="left", fill="both", expand=True)
+        self.board_frame.grid(row=0, column=0, sticky="nsew")
+        self.board_frame.grid_columnconfigure(0, weight=1)
 
-        right = tk.Frame(body, bg=PANEL, width=300)
-        right.pack(side="right", fill="y")
-        right.pack_propagate(False)
+        self.log = LogPanel(body, on_toggle=self._on_log_toggle)
+        self.log.grid(row=0, column=1, sticky="ns")
 
-        tk.Label(right, text="对局日志", bg=PANEL, fg=TEXT, font=FONT_BOLD).pack(anchor="w", padx=8, pady=(8, 2))
-        self.log_text = tk.Text(
-            right, wrap="word", font=FONT_LOG, bg="#fdfcf8", fg=TEXT, relief="flat", height=10
-        )
-        self.log_text.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.log_text.configure(state="disabled")
-
-        scroll = ttk.Scrollbar(self.log_text, command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scroll.set)
-
-        # 牌桌各行
-        self.opp_info = tk.Frame(self.board_frame, bg=PANEL, height=26)
-        self.opp_info.pack(fill="x", padx=8, pady=(8, 2))
+        # 牌桌各行：对手 → 中条 → 我方 → 手牌 → 操作条
+        self.opp_row = tk.Frame(self.board_frame, bg=BG)
+        self.opp_row.grid(row=0, column=0, sticky="nsew")
+        self.opp_row.pack_propagate(False)
+        self.opp_info = tk.Frame(self.opp_row, bg=PANEL, height=INFO_H)
+        self.opp_info.pack(fill="x", padx=8, pady=(6, 0))
         self.opp_info.pack_propagate(False)
+        self.opp_board = tk.Frame(self.opp_row, bg=PANEL_DARK)
+        self.opp_board.pack(fill="both", expand=True, padx=8, pady=(2, 4))
 
-        self.opp_board = tk.Frame(self.board_frame, bg=PANEL_DARK, height=200)
-        self.opp_board.pack(fill="x", padx=8, pady=2)
-        self.opp_board.pack_propagate(False)
-
-        self.mid_bar = tk.Frame(self.board_frame, bg=PANEL, height=76)
-        self.mid_bar.pack(fill="x", padx=8, pady=4)
+        self.mid_bar = tk.Frame(self.board_frame, bg=PANEL)
+        self.mid_bar.grid(row=1, column=0, sticky="nsew")
         self.mid_bar.pack_propagate(False)
 
-        self.my_board = tk.Frame(self.board_frame, bg=PANEL_DARK, height=200)
-        self.my_board.pack(fill="x", padx=8, pady=2)
-        self.my_board.pack_propagate(False)
-
-        self.my_info = tk.Frame(self.board_frame, bg=PANEL, height=26)
-        self.my_info.pack(fill="x", padx=8, pady=2)
+        self.mine_row = tk.Frame(self.board_frame, bg=BG)
+        self.mine_row.grid(row=2, column=0, sticky="nsew")
+        self.mine_row.pack_propagate(False)
+        self.my_board = tk.Frame(self.mine_row, bg=PANEL_DARK)
+        self.my_board.pack(fill="both", expand=True, padx=8, pady=(4, 2))
+        self.my_info = tk.Frame(self.mine_row, bg=PANEL, height=INFO_H)
+        self.my_info.pack(fill="x", padx=8, pady=(0, 2))
         self.my_info.pack_propagate(False)
 
-        self.hand_frame = tk.Frame(self.board_frame, bg=PANEL, height=192)
-        self.hand_frame.pack(fill="x", padx=8, pady=4)
+        self.hand_frame = tk.Frame(self.board_frame, bg=PANEL)
+        self.hand_frame.grid(row=3, column=0, sticky="nsew")
         self.hand_frame.pack_propagate(False)
 
-        self.action_bar = tk.Frame(self.board_frame, bg=PANEL_DARK, height=46)
-        self.action_bar.pack(fill="x", padx=8, pady=(2, 8))
+        self.action_bar = tk.Frame(self.board_frame, bg=PANEL_DARK)
+        self.action_bar.grid(row=4, column=0, sticky="nsew")
         self.action_bar.pack_propagate(False)
+        # 操作条三段：左主提示 / 中上下文按钮 / 右快捷键提示与错误反馈
+        self.action_left = tk.Frame(self.action_bar, bg=PANEL_DARK)
+        self.action_left.pack(side="left", fill="y", padx=(10, 0))
+        self.action_right = tk.Frame(self.action_bar, bg=PANEL_DARK)
+        self.action_right.pack(side="right", fill="y", padx=(0, 10))
+        self.action_center = tk.Frame(self.action_bar, bg=PANEL_DARK)
+        self.action_center.pack(side="left", fill="both", expand=True)
+        self._error_job: str | None = None
+
+        self._row_frames = {
+            "opp": self.opp_row,
+            "mid": self.mid_bar,
+            "mine": self.mine_row,
+            "hand": self.hand_frame,
+            "action": self.action_bar,
+        }
+
+        self.bind("<Configure>", self._on_configure)
+        self._bind_shortcuts()
+        self.after(60, self._apply_window_layout)
+
+    def _on_configure(self, event: tk.Event) -> None:
+        if event.widget is not self:
+            return
+        if self._resize_job is not None:
+            try:
+                self.after_cancel(self._resize_job)
+            except tk.TclError:
+                pass
+        self._resize_job = self.after(120, self._apply_window_layout)
+
+    def _apply_window_layout(self) -> None:
+        self._resize_job = None
+        height = self.winfo_height()
+        if height <= 1:
+            return
+        heights = layout.row_heights(height)
+        self.header.configure(height=heights["header"])
+        for row, key in enumerate(("opp", "mid", "mine", "hand", "action")):
+            self.board_frame.grid_rowconfigure(row, minsize=heights[key], weight=0)
+            self._row_frames[key].configure(height=heights[key])
+        self._maybe_auto_collapse()
+
+    def _maybe_auto_collapse(self) -> None:
+        """窄窗口默认折叠日志，用户手动切换后以其选择为准。"""
+        if self._log_user_set:
+            return
+        want = self.winfo_width() < 1200
+        if self.log.collapsed != want:
+            self.log.set_collapsed(want)
+
+    def _on_log_toggle(self, _collapsed: bool) -> None:
+        self._log_user_set = True
 
     def _bootstrap(self) -> None:
         """启动后加载卡池并开一局。"""
@@ -237,68 +233,13 @@ class MTGApp(tk.Tk):
 
     # ================================================================ 新对局
     def new_game_dialog(self, first: bool = False) -> None:
-        dialog = tk.Toplevel(self)
-        dialog.title("开始新对局")
-        dialog.configure(bg=BG)
-        dialog.geometry("460x430")
-        dialog.transient(self)
-        dialog.grab_set()
+        dialogs.new_game_dialog(self, first)
 
-        tk.Label(dialog, text="选择套牌", bg=BG, fg=TEXT, font=FONT_TITLE).pack(pady=(12, 4))
+    def show_zones(self) -> None:
+        dialogs.show_zones(self)
 
-        # 预构筑套牌
-        preset_files = _list_preset_decks()
-        tk.Label(dialog, text="预构筑套牌（推荐）", bg=BG, fg=TEXT, font=FONT_BOLD).pack(anchor="w", padx=20)
-        deck_var = tk.StringVar()
-        if preset_files:
-            names = [name for _path, name in preset_files]
-            combo = ttk.Combobox(dialog, values=names, textvariable=deck_var, state="readonly", width=22,
-                                 font=FONT_NORMAL)
-            combo.pack(padx=20, pady=(2, 8))
-            combo.current(0)
-        else:
-            tk.Label(dialog, text="（未找到，请先运行 python -m mtg.cards.build_decks）",
-                     bg=BG, fg=TEXT_DIM, font=FONT_SMALL).pack(padx=20)
-
-        tk.Label(dialog, text="或按颜色自动组一套", bg=BG, fg=TEXT, font=FONT_BOLD).pack(anchor="w", padx=20)
-        color_var = tk.StringVar(value="绿 (G)")
-        row = tk.Frame(dialog, bg=BG)
-        row.pack(pady=4, padx=20, anchor="w")
-        for idx, (label, colors) in enumerate(COLOR_CHOICES):
-            tk.Radiobutton(
-                row, text=label, variable=color_var, value=label, bg=BG, fg=TEXT,
-                font=FONT_NORMAL, selectcolor=PANEL, anchor="w", width=12,
-            ).grid(row=idx // 4, column=idx % 4, sticky="w", padx=2, pady=1)
-
-        agg_var = tk.DoubleVar(value=0.6)
-        tk.Label(dialog, text="电脑进攻性", bg=BG, fg=TEXT, font=FONT_NORMAL).pack(pady=(10, 0))
-        tk.Scale(dialog, from_=0.2, to=1.0, resolution=0.1, orient="horizontal",
-                 variable=agg_var, bg=BG, fg=TEXT, length=300).pack()
-
-        def start() -> None:
-            dialog.destroy()
-            chosen = deck_var.get()
-            path = next((p for p, _n in preset_files if _n == chosen), None) if chosen else None
-            if path is None and preset_files:
-                path = preset_files[0][0]
-            if path is not None:
-                self.start_game(colors=None, deck_path=path, aggression=agg_var.get())
-                return
-            label = color_var.get()
-            colors = next(c for lbl, c in COLOR_CHOICES if lbl == label)
-            self.start_game(colors, aggression=agg_var.get())
-
-        def cancel() -> None:
-            dialog.destroy()
-            if first:
-                self.destroy()
-
-        btn_row = tk.Frame(dialog, bg=BG)
-        btn_row.pack(pady=14)
-        tk.Button(btn_row, text="开始", bg=BTN_ACCENT, fg=BTN_FG, font=FONT_BOLD, width=10,
-                  relief="flat", command=start).pack(side="left", padx=6)
-        tk.Button(btn_row, text="取消", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=10,
-                  relief="flat", command=cancel).pack(side="left", padx=6)
+    def show_library(self) -> None:
+        dialogs.show_library(self)
 
     def start_game(
         self,
@@ -315,14 +256,20 @@ class MTGApp(tk.Tk):
 
         if deck_path:
             my_deck = load_deck(deck_path, self.db)
-            deck_colors = _colors_of_deck(my_deck)
+            deck_colors = dialogs.colors_of_deck(my_deck)
+            deck_name = next((n for p, n in dialogs.list_preset_decks() if p == deck_path), "预构筑套牌")
         else:
             my_deck = auto_build(self.db.cards, colors or ["G"], size=60, seed=seed)
             deck_colors = list(colors or ["G"])
+            deck_name = "自动构筑"
 
         # 电脑用一套不同的颜色，保证对局有变化
-        ai_colors = _opposite_colors(deck_colors)
+        ai_colors = dialogs.opposite_colors(deck_colors)
         ai_deck = auto_build(self.db.cards, ai_colors, size=60, seed=seed + 7777)
+
+        self.my_colors = deck_colors
+        self.ai_colors = ai_colors
+        self.deck_name = deck_name
 
         self.human = Player(name="你")
         self.ai = Player(name="电脑")
@@ -337,17 +284,13 @@ class MTGApp(tk.Tk):
         self.game.setup()
         self.game.start(first_player=self.human)
 
-        self._log_index = 0
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.configure(state="disabled")
+        self.log.clear()
 
         self.selected_attackers.clear()
         self.block_assignments.clear()
         self.focused_attacker = None
         self.pending = None
 
-        self.status_var.set(f"你的套牌 {'/'.join(deck_colors)} vs 电脑 {'/'.join(ai_colors)}")
         self.pump()
         self._prefetch_art()
 
@@ -420,6 +363,175 @@ class MTGApp(tk.Tk):
         finally:
             menu.grab_release()
 
+    # ================================================================ 启动式异能
+    def _on_permanent_right_click(self, perm: Any) -> None:
+        """右键我方永久物：弹出其启动式异能菜单（左键仍用于横置产费）。"""
+        game = self.game
+        if game is None or self.human is None or game.game_over:
+            return
+        if perm.controller is not self.human:
+            return
+        from ..engine.payment import _activated_abilities
+
+        options = [(i, ab) for i, ab in enumerate(_activated_abilities(perm))
+                   if not ab.is_mana_ability]
+        if not options:
+            self.flash_error(f"{perm.name} 没有可启动的异能")
+            return
+        if self.pending is None or self.pending.kind != "priority":
+            self.flash_error(f"现在不是启动 {perm.name} 异能的时机")
+            return
+        self._show_ability_menu(perm, options)
+
+    def _show_ability_menu(self, perm: Any, options: list[tuple[int, Any]]) -> None:
+        """异能菜单：显示费用与文本，不可用的置灰并注明原因。"""
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label=perm.name, state="disabled")
+        menu.add_separator()
+        for idx, ability in options:
+            ok, reason = self._ability_available(perm, ability, idx)
+            text = ability.text or "异能"
+            if len(text) > 34:
+                text = text[:33] + "…"
+            label = f"{ability.cost.describe()}：{text}"
+            menu.add_command(
+                label=label if ok else f"{label}（{reason}）",
+                state="normal" if ok else "disabled",
+                command=lambda i=idx: self._activate_perm_ability(perm, i),
+            )
+        try:
+            menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+        finally:
+            menu.grab_release()
+
+    def _ability_available(self, perm: Any, ability: Any, index: int = -1) -> tuple[bool, str]:
+        """异能此刻能否启动：法术时机 + 费用是否够。"""
+        game = self.game
+        if game is None or self.human is None:
+            return False, "不可启动"
+        cost = ability.cost
+        if cost.once_per_turn and index in getattr(perm, "activated_this_turn", ()):
+            return False, "本回合已用过"
+        if cost.sorcery_timing and (
+            game.active_player is not self.human
+            or game.stack
+            or game.phase not in (Phase.MAIN_1, Phase.MAIN_2)
+        ):
+            return False, "只能于法术时机"
+        if cost.tap and perm.tapped:
+            return False, "已横置"
+        if cost.tap and perm.is_creature and perm.is_sick:
+            return False, "召唤失调"
+        from ..engine.payment import could_pay
+
+        if not could_pay(game, perm.controller, cost.mana):
+            return False, "法术力不足"
+        if cost.life and perm.controller.life < cost.life:
+            return False, "生命不足"
+        if cost.discard and len(perm.controller.hand) < cost.discard:
+            return False, "手牌不足"
+        if cost.remove_counters:
+            kind, amount = cost.remove_counters
+            if perm.counters.get(kind, 0) < amount:
+                return False, "指示物不足"
+        if cost.sacrifice_other:
+            has = any(
+                p is not perm and game._matches_target_spec(p, cost.sacrifice_other)
+                for p in perm.controller.permanents
+            )
+            if not has:
+                return False, "没有可牺牲的永久物"
+        return True, ""
+
+    def _activate_perm_ability(self, perm: Any, ability_index: int) -> None:
+        game = self.game
+        if game is None or self.human is None:
+            return
+        from ..engine.payment import _activated_abilities
+
+        activated = _activated_abilities(perm)
+        if ability_index >= len(activated):
+            return
+        cost = activated[ability_index].cost
+
+        # 1) 需要目标的异能先选目标
+        targets = self._choose_ability_targets(perm, ability_index)
+        if targets is None:
+            return  # 用户取消了目标选择
+
+        # 2) 需要主动选择的额外费用（弃牌 / 牺牲其他）
+        choices: dict[str, Any] = {}
+        if cost.discard:
+            picked = dialogs.ask_cards(
+                self, f"{perm.name} — 弃 {cost.discard} 张牌", list(self.human.hand),
+                cost.discard, human=self.human,
+            )
+            if picked is None:
+                return  # 用户取消了弃牌选择
+            choices["discard"] = picked
+        if cost.sacrifice_other:
+            candidates = game._sacrifice_candidates(perm.controller, perm, cost.sacrifice_other)
+            if not candidates:
+                self.flash_error("没有可牺牲的永久物")
+                return
+            picked = dialogs.ask_target(
+                self, f"{perm.name} — 牺牲{cost.sacrifice_other.describe()}", candidates,
+                human=self.human,
+            )
+            if picked is None:
+                return  # 用户取消了牺牲选择
+            choices["sacrifice"] = [picked]
+
+        game.submit(Action(kind="activate", permanent=perm,
+                           ability_index=ability_index, targets=targets,
+                           payload={"choices": choices}))
+        self.pending = None
+        self.pump()
+
+    def _choose_ability_targets(self, perm: Any, ability_index: int) -> list | None:
+        """为需要目标的异能选择目标。返回 None 表示取消。"""
+        from ..engine.payment import _activated_abilities
+
+        activated = _activated_abilities(perm)
+        if ability_index >= len(activated):
+            return []
+        specs = list(activated[ability_index].targets)
+        if not specs:
+            return []
+
+        game = self.game
+        if game is None or self.human is None:
+            return None
+        opponent = game.other_player(self.human)
+
+        chosen_list: list[Any] = []
+        for spec in specs:
+            kind = getattr(spec, "kind", "any")
+            if kind == "player":
+                pool: list[Any] = [opponent]
+            elif kind == "spell":
+                pool = [game.stack.top] if game.stack.top else []
+            else:
+                pool = [p for player in game.players for p in player.permanents
+                        if board.matches_target_kind(p, kind)]
+            controller = getattr(spec, "controller", "any")
+            if controller == "you":
+                pool = [p for p in pool if getattr(p, "controller", None) is self.human]
+            elif controller == "opponent":
+                pool = [p for p in pool if getattr(p, "controller", None) is not self.human]
+            if not pool:
+                if getattr(spec, "optional", False):
+                    continue
+                self.flash_error("没有合法目标")
+                return None
+            chosen = dialogs.ask_target(
+                self, f"{perm.name} — 选择目标（{spec.describe()}）", pool, human=self.human,
+            )
+            if chosen is None:
+                return None
+            chosen_list.append(chosen)
+        return chosen_list
+
     # ================================================================ 引擎推进
     def pump(self) -> None:
         """推进引擎直到需要人类做决定（或游戏结束）。"""
@@ -477,228 +589,187 @@ class MTGApp(tk.Tk):
         self._append_log(message)
 
     def _append_log(self, message: str) -> None:
-        self.log_text.configure(state="normal")
-        self.log_text.insert("end", message + "\n")
-        self.log_text.see("end")
-        self.log_text.configure(state="disabled")
+        self.log.append(message)
+
+    # ================================================================ 反馈与快捷键
+    def flash_error(self, message: str) -> None:
+        """在操作条右侧显示红色提示，2 秒后恢复快捷键提示。"""
+        if self._error_job is not None:
+            try:
+                self.after_cancel(self._error_job)
+            except tk.TclError:
+                pass
+            self._error_job = None
+        board.clear(self.action_right)
+        tk.Label(self.action_right, text=message, bg=PANEL_DARK, fg=BTN_DANGER,
+                 font=FONT_BOLD).pack(side="right")
+        self._error_job = self.after(2000, self._clear_error)
+
+    def _clear_error(self) -> None:
+        self._error_job = None
+        board.clear(self.action_right)
+        board.render_action_hints(self)
+
+    def _bind_shortcuts(self) -> None:
+        """绑定全局快捷键；焦点在输入/按钮控件时不触发。"""
+        self.bind("<space>", self._key_space)
+        self.bind("<Return>", self._key_return)
+        self.bind("<Escape>", self._key_escape)
+        self.bind("<KeyPress-a>", self._key_select_all)
+        self.bind("<KeyPress-A>", self._key_select_all)
+        self.bind("<Control-Return>", self._key_end_phase)
+        self.bind("<KeyPress-n>", self._key_skip_idle)
+        self.bind("<KeyPress-N>", self._key_skip_idle)
+
+    def _shortcuts_enabled(self) -> bool:
+        """焦点不在输入型或按钮控件上时才响应快捷键。"""
+        widget = self.focus_get()
+        if widget is None:
+            return True
+        blocked = ("Entry", "Text", "TCombobox", "Spinbox", "Button",
+                   "Checkbutton", "Listbox", "Scrollbar")
+        return widget.winfo_class() not in blocked
+
+    def _key_space(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        kind = self.pending.kind
+        if kind == "priority":
+            self._pass()
+        elif kind == "declare_attackers":
+            self._submit_declarations([])  # 不攻击
+        elif kind == "declare_blockers":
+            self._declare_no_blockers()
+        return "break"
+
+    def _key_return(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        kind = self.pending.kind
+        if kind == "declare_attackers":
+            self._confirm_attackers()
+        elif kind == "declare_blockers":
+            self._confirm_blockers()
+        else:
+            return None
+        return "break"
+
+    def _key_escape(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        kind = self.pending.kind
+        if kind == "declare_attackers" and self.selected_attackers:
+            self.selected_attackers.clear()
+            self.render()
+        elif kind == "declare_blockers" and (self.block_assignments or self.focused_attacker):
+            self._clear_blocks()
+        else:
+            return None
+        return "break"
+
+    def _key_select_all(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        if self.pending.kind != "declare_attackers":
+            return None
+        self._select_all_attackers()
+        return "break"
+
+    def _key_end_phase(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        if self.pending.kind != "priority":
+            return None
+        self._pass_phase()
+        return "break"
+
+    def _key_skip_idle(self, _event: tk.Event) -> str | None:
+        if not self._shortcuts_enabled() or self.pending is None:
+            return None
+        if self.pending.kind != "priority":
+            return None
+        self._skip_idle_phases()
+        return "break"
+
+    # ================================================================ 快进
+    def _has_meaningful_action(self) -> bool:
+        """当前时机玩家是否有可做的操作：能施放的咒语，或主阶段能下地。"""
+        game = self.game
+        human = self.human
+        if game is None or human is None:
+            return False
+        for card in human.hand:
+            if card.data.is_land:
+                continue
+            ok, _ = game.can_cast(human, card)
+            if ok:
+                return True
+        in_my_main = (
+            game.active_player is human
+            and not game.stack
+            and game.phase in (Phase.MAIN_1, Phase.MAIN_2)
+        )
+        if in_my_main and human.can_play_land() and any(c.data.is_land for c in human.hand):
+            return True
+        # 主阶段里还有可启动的非产费异能，也算"有正事"
+        if in_my_main:
+            from ..engine.payment import _activated_abilities
+
+            for perm in human.permanents:
+                for ability in _activated_abilities(perm):
+                    if ability.is_mana_ability:
+                        continue
+                    if self._ability_available(perm, ability)[0]:
+                        return True
+        return False
+
+    def _skip_idle_phases(self) -> None:
+        """一键快进：连续让过没有可操作内容的阶段，停在下一个需要你操作的时刻。
+
+        遇到需要宣告攻击者/阻挡者的决策，或你手上有可施放的咒语（含瞬间）、
+        主阶段有地可下时停下。
+        """
+        game = self.game
+        if game is None or self.human is None:
+            return
+        if self.pending is None or self.pending.kind != "priority" or self.pending.player is not self.human:
+            return
+        guard = 0
+        while guard < 200:
+            guard += 1
+            if game.game_over or self._has_meaningful_action():
+                break
+            game.submit(Action(kind="pass"))
+            decision = game.advance()
+            if decision is None or game.game_over:
+                self.pending = None
+                self.render()
+                if game.game_over:
+                    self._show_game_over()
+                return
+            if decision.player is not self.human:
+                self._ai_act(decision)
+                continue
+            self.pending = decision
+            if decision.kind != "priority":
+                break  # 需要你宣告攻击/阻挡
+        self.render()
 
     # ================================================================ 渲染
     def render(self) -> None:
-        if self.game is None:
-            return
-        self._render_info(self.opp_info, self.ai, is_opponent=True)
-        self._render_info(self.my_info, self.human, is_opponent=False)
-        self._render_board(self.opp_board, self.ai, is_mine=False)
-        self._render_board(self.my_board, self.human, is_mine=True)
-        self._render_mid()
-        self._render_hand()
-        self._render_actions()
-
-    def _clear(self, frame: tk.Frame) -> None:
-        for child in frame.winfo_children():
-            child.destroy()
-
-    def _render_info(self, frame: tk.Frame, player: Player | None, is_opponent: bool) -> None:
-        self._clear(frame)
-        if player is None:
-            return
-        bits = [
-            f"{player.name}",
-            f"生命 {player.life}",
-            f"手牌 {len(player.hand)}",
-            f"牌库 {len(player.library)}",
-            f"坟场 {len(player.graveyard)}",
-            f"法术力 {player.mana_pool}",
-        ]
-        for text in bits:
-            color = TEXT if "生命" not in text else (BTN_DANGER if player.life <= 5 else TEXT)
-            tk.Label(frame, text=text, bg=PANEL, fg=color, font=FONT_BOLD).pack(side="left", padx=8)
-        if is_opponent:
-            side = "对手"
-        else:
-            side = "我方"
-        tk.Label(frame, text=f"（{side}）", bg=PANEL, fg=TEXT_DIM, font=FONT_SMALL).pack(side="left")
-
-    def _render_board(self, frame: tk.Frame, player: Player | None, is_mine: bool) -> None:
-        self._clear(frame)
-        if player is None:
-            return
-
-        lands = [p for p in player.permanents if p.is_land]
-        creatures = [p for p in player.permanents if p.is_creature and not p.is_land]
-        others = [p for p in player.permanents if not p.is_land and not p.is_creature]
-
-        # 三块等宽（uniform），否则内容少的那块会被挤窄、能放的列数也跟着变
-        for column, (title, items, fg) in enumerate(
-            (("地", lands, TEXT_DIM), ("生物", creatures, TEXT), ("其他", others, TEXT_DIM))
-        ):
-            frame.columnconfigure(column, weight=1, uniform="board")
-            frame.rowconfigure(0, weight=1)
-            section = tk.Frame(frame, bg=PANEL_DARK)
-            section.grid(row=0, column=column, sticky="nsew", padx=4, pady=4)
-            tk.Label(section, text=f"{title} ({len(items)})", bg=PANEL_DARK, fg=fg,
-                     font=FONT_BOLD).pack(anchor="w")
-            strip = CardStrip(section, bg=PANEL_DARK)
-            strip.pack(fill="both", expand=True)
-            for perm in items:
-                widget = self._render_permanent(strip, perm, is_mine)
-                if widget is not None:
-                    strip.add(widget)
-
-    def _render_permanent(self, parent: tk.Misc, perm: Any, is_mine: bool) -> Any:
-        data = perm.data
-        # 徽章显示"当前"数值（含所有加成），不是牌面印刷值
-        badge = None
-        if perm.is_creature:
-            badge = f"{perm.power()}/{perm.toughness()}"
-        elif perm.is_planeswalker:
-            badge = f"{perm.loyalty}"
-
-        state_bits = []
-        if perm.tapped:
-            state_bits.append("横置")
-        if perm.is_sick and perm.is_creature:
-            state_bits.append("召唤失调")
-        if perm.damage_marked:
-            state_bits.append(f"伤害 {perm.damage_marked}")
-        for kind, count in perm.counters.items():
-            state_bits.append(f"{kind}×{count}")
-        subtitle = " ".join(state_bits)
-
-        container = parent.inner if isinstance(parent, CardStrip) else parent
-        widget = CardWidget(container, data, subtitle=subtitle, compact=True, badge=badge,
-                            on_click=lambda: self._on_permanent_click(perm))
-        widget.set_dimmed(perm.tapped)
-
-        # 战斗标记
-        if is_mine and id(perm) in self.selected_attackers:
-            widget.set_selected(True)
-            widget.inner.configure(highlightbackground=ATTACKING)
-        if not is_mine and self.focused_attacker is not None and id(perm) == self.focused_attacker:
-            widget.inner.configure(highlightbackground=HIGHLIGHT)
-        if not is_mine and any(id(perm) in v for v in self.block_assignments.values()):
-            widget.inner.configure(highlightbackground=BLOCKING)
-
-        text = _permanent_description(perm)
-        card_tooltip(widget, data, text)
-        return widget
-
-    def _render_mid(self) -> None:
-        self._clear(self.mid_bar)
-        game = self.game
-        assert game is not None
-
-        # 阶段指示
-        left = tk.Frame(self.mid_bar, bg=PANEL)
-        left.pack(side="left", fill="y", padx=6)
-        phase_text = game.phase.value
-        if game.step:
-            phase_text += f" · {game.step.value}"
-        tk.Label(left, text=f"第 {game.turn_number} 回合", bg=PANEL, fg=TEXT, font=FONT_BOLD).pack(anchor="w")
-        tk.Label(left, text=phase_text, bg=PANEL, fg=TEXT_DIM, font=FONT_NORMAL).pack(anchor="w")
-        active = game.active_player
-        tk.Label(left, text=f"主动：{active.name if active else '-'}", bg=PANEL, fg=TEXT_DIM,
-                 font=FONT_SMALL).pack(anchor="w")
-
-        # 堆叠
-        stack_frame = tk.Frame(self.mid_bar, bg=PANEL)
-        stack_frame.pack(side="left", fill="both", expand=True, padx=10)
-        tk.Label(stack_frame, text="堆叠", bg=PANEL, fg=TEXT, font=FONT_BOLD).pack(anchor="w")
-        if game.stack:
-            lines = []
-            for item in list(reversed(game.stack.items))[:4]:
-                lines.append("▶ " + item.describe())
-            tk.Label(stack_frame, text="\n".join(lines), bg=PANEL, fg=TEXT, font=FONT_SMALL,
-                     justify="left").pack(anchor="w")
-        else:
-            tk.Label(stack_frame, text="（空）", bg=PANEL, fg=TEXT_DIM, font=FONT_SMALL).pack(anchor="w")
-
-        # 攻击提示
-        if game.combat.state.attackers:
-            names = ", ".join(d.attacker.name for d in game.combat.state.attackers)
-            tk.Label(self.mid_bar, text=f"攻击中：{names}", bg=PANEL, fg=ATTACKING, font=FONT_BOLD,
-                     wraplength=380, justify="left").pack(side="right", padx=8)
-
-    def _render_hand(self) -> None:
-        self._clear(self.hand_frame)
-        if self.game is None or self.human is None:
-            return
-        tk.Label(self.hand_frame, text=f"手牌（{len(self.human.hand)}）", bg=PANEL, fg=TEXT,
-                 font=FONT_BOLD).pack(anchor="w", padx=6)
-
-        strip = CardStrip(self.hand_frame, bg=PANEL)
-        strip.pack(fill="both", expand=True, padx=6)
-
-        for card in self.human.hand:
-            playable = self._is_playable(card)
-            widget = CardWidget(strip.inner, card.data, on_click=lambda c=card: self._on_hand_click(c))
-            if not playable:
-                widget.set_dimmed(True)
-            card_tooltip(widget, card.data, _card_description(card.data))
-            strip.add(widget)
-
-    def _is_playable(self, card: Any) -> bool:
-        game = self.game
-        assert game is not None and self.human is not None
-        if card.data.is_land:
-            return self.human.can_play_land()
-        ok, _reason = game.can_cast(self.human, card)
-        return ok
-
-    def _render_actions(self) -> None:
-        self._clear(self.action_bar)
-        if self.game is None:
-            return
-
-        if self.game.game_over:
-            winner = self.game.winner
-            tk.Label(self.action_bar, text=f"对局结束 · 胜者：{winner.name if winner else '无'}",
-                     bg=PANEL_DARK, fg=TEXT, font=FONT_TITLE).pack(side="left", padx=12)
-            tk.Button(self.action_bar, text="再来一局", bg=BTN_ACCENT, fg=BTN_FG, font=FONT_BOLD,
-                      relief="flat", command=lambda: self.new_game_dialog()).pack(side="left", padx=6)
-            return
-
-        decision = self.pending
-        if decision is None:
-            tk.Label(self.action_bar, text="电脑思考中…", bg=PANEL_DARK, fg=TEXT_DIM,
-                     font=FONT_NORMAL).pack(side="left", padx=12)
-            return
-
-        kind = decision.kind
-        if kind == "priority":
-            tk.Label(self.action_bar, text=decision.prompt, bg=PANEL_DARK, fg=TEXT,
-                     font=FONT_NORMAL).pack(side="left", padx=10)
-            tk.Button(self.action_bar, text="让过", bg=BTN_BG, fg=BTN_FG, font=FONT_BOLD, width=8,
-                     relief="flat", command=self._pass).pack(side="left", padx=4)
-            tk.Button(self.action_bar, text="让过本阶段", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=11,
-                     relief="flat", command=self._pass_phase).pack(side="left", padx=4)
-        elif kind == "declare_attackers":
-            tk.Label(self.action_bar, text="点击自己的生物选择攻击，然后确认",
-                     bg=PANEL_DARK, fg=TEXT, font=FONT_NORMAL).pack(side="left", padx=10)
-            tk.Button(self.action_bar, text="全选", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=7,
-                     relief="flat", command=self._select_all_attackers).pack(side="left", padx=4)
-            tk.Button(self.action_bar, text="确认攻击", bg=BTN_ACCENT, fg=BTN_FG, font=FONT_BOLD, width=10,
-                     relief="flat", command=self._confirm_attackers).pack(side="left", padx=4)
-            tk.Button(self.action_bar, text="不攻击", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=8,
-                     relief="flat", command=lambda: self._submit_declarations([])).pack(side="left", padx=4)
-        elif kind == "declare_blockers":
-            tk.Label(self.action_bar,
-                     text="先点对手的攻击者，再点自己的生物进行阻挡",
-                     bg=PANEL_DARK, fg=TEXT, font=FONT_NORMAL).pack(side="left", padx=10)
-            tk.Button(self.action_bar, text="确认阻挡", bg=BTN_ACCENT, fg=BTN_FG, font=FONT_BOLD, width=10,
-                     relief="flat", command=self._confirm_blockers).pack(side="left", padx=4)
-            tk.Button(self.action_bar, text="清除", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=7,
-                     relief="flat", command=self._clear_blocks).pack(side="left", padx=4)
-            tk.Button(self.action_bar, text="不阻挡", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=8,
-                     relief="flat", command=self._confirm_blockers).pack(side="left", padx=4)
+        board.render(self)
 
     # ================================================================ 人类交互
     def _on_hand_click(self, card: Any) -> None:
         game = self.game
-        if game is None or self.human is None:
+        if game is None or self.human is None or game.game_over:
             return
         if self.pending is None or self.pending.kind != "priority":
-            messagebox.showinfo("提示", "现在不是你可以出牌的时机")
+            self.flash_error("现在不是你可以出牌的时机")
+            return
+        ok, reason = self._is_playable(card)
+        if not ok:
+            self.flash_error(f"{card.name}：{reason}")
             return
         if card.data.is_land:
             self.game.submit(Action(kind="play_land", card=card))
@@ -736,11 +807,12 @@ class MTGApp(tk.Tk):
             pool: list[Any] = []
             for player in game.players:
                 for perm in player.permanents:
-                    if _matches_target_kind(perm, kind):
+                    if board.matches_target_kind(perm, kind):
                         pool.append(perm)
             if not pool:
                 continue
-            chosen = _ask_target(self, f"{card.name} — 选择目标（{spec.describe()}）", pool)
+            chosen = dialogs.ask_target(self, f"{card.name} — 选择目标（{spec.describe()}）",
+                                        pool, human=self.human)
             if chosen is None:
                 return None
             candidates.append(chosen)
@@ -761,7 +833,7 @@ class MTGApp(tk.Tk):
             else:
                 ok, reason = game.combat.can_attack(perm)
                 if not ok:
-                    messagebox.showinfo("无法攻击", f"{perm.name}：{reason}")
+                    self.flash_error(f"{perm.name}：{reason}")
                     return
                 self.selected_attackers.add(key)
             self.render()
@@ -771,16 +843,16 @@ class MTGApp(tk.Tk):
             if perm.controller is self.human:
                 # 我方生物：分配给当前选中的攻击者
                 if self.focused_attacker is None:
-                    messagebox.showinfo("提示", "请先点击要阻挡的对手生物")
+                    self.flash_error("请先点击要阻挡的对手生物")
                     return
                 blockers = self.block_assignments.setdefault(self.focused_attacker, [])
                 key = id(perm)
                 if key in blockers:
                     blockers.remove(key)
                 else:
-                    ok, reason = game.combat.can_block(perm, _permanent_by_id(game, self.focused_attacker))
+                    ok, reason = game.combat.can_block(perm, board.permanent_by_id(game, self.focused_attacker))
                     if not ok:
-                        messagebox.showinfo("无法阻挡", f"{perm.name}：{reason}")
+                        self.flash_error(f"{perm.name}：{reason}")
                         return
                     blockers.append(key)
             else:
@@ -797,15 +869,60 @@ class MTGApp(tk.Tk):
             self._tap_for_mana(perm)
 
     def _tap_for_mana(self, perm: Any) -> None:
-        """手动横置一个永久物产费。"""
+        """手动横置一个永久物产费；多色可选时弹出选色菜单。"""
+        game = self.game
+        if game is None:
+            return
+        if perm.tapped:
+            self.flash_error(f"{perm.name} 已横置")
+            return
         from ..engine.payment import _ability_colors, _activated_abilities
 
+        options: list[tuple[str, int]] = []  # (颜色, 异能序号)
         for idx, ability in enumerate(_activated_abilities(perm)):
-            if ability.is_mana_ability:
-                self.game.activate_ability(perm, idx, [])
-                self.render()
-                return
-        messagebox.showinfo("提示", f"{perm.name} 没有可以产费的异能")
+            if not ability.is_mana_ability:
+                continue
+            for color in _ability_colors(ability):
+                if all(color != chosen for chosen, _ in options):
+                    options.append((color, idx))
+        if not options:
+            self.flash_error(f"{perm.name} 没有可以产费的异能")
+            return
+        # 只有"多个可选异能"才需要让用户选；单一异能即使能产多色，引擎也是一次性结算
+        if len({idx for _, idx in options}) == 1:
+            game.activate_ability(perm, options[0][1], [])
+            self.render()
+            return
+        self._show_mana_menu(perm, options)
+
+    def _show_mana_menu(self, perm: Any, options: list[tuple[str, int]]) -> None:
+        """在鼠标位置弹出产费选色菜单。"""
+        menu = tk.Menu(self, tearoff=0)
+        for color, idx in options:
+            menu.add_command(
+                label=f"加 {_MANA_CN.get(color, color)}色法术力",
+                command=lambda i=idx: self._activate_mana(perm, i),
+            )
+        try:
+            menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+        finally:
+            menu.grab_release()
+
+    def _activate_mana(self, perm: Any, ability_index: int) -> None:
+        if self.game is None:
+            return
+        self.game.activate_ability(perm, ability_index, [])
+        self.render()
+
+    def _is_playable(self, card: Any) -> tuple[bool, str]:
+        """能否在此时机打出，返回 (是否可打, 简短原因)。"""
+        game = self.game
+        assert game is not None and self.human is not None
+        if card.data.is_land:
+            if self.human.can_play_land():
+                return True, ""
+            return False, "本回合已下地"
+        return game.can_cast(self.human, card)
 
     def _pass(self) -> None:
         self.game.submit(Action(kind="pass"))
@@ -877,7 +994,7 @@ class MTGApp(tk.Tk):
             attacker = index.get(attacker_id)
             if attacker is None:
                 continue
-            blockers = [_permanent_by_id(game, bid) for bid in blocker_ids]
+            blockers = [board.permanent_by_id(game, bid) for bid in blocker_ids]
             blockers = [b for b in blockers if b is not None]
             if blockers:
                 assignments[attacker] = blockers
@@ -887,75 +1004,18 @@ class MTGApp(tk.Tk):
         self.pending = None
         self.pump()
 
-    # ================================================================ 其他窗口
-    def show_zones(self) -> None:
-        """查看双方坟场（卡图）与牌库概况。"""
+    def _declare_no_blockers(self) -> None:
+        """宣布不阻挡：丢弃已分配，提交空阻挡声明。"""
         if self.game is None:
             return
-        window = tk.Toplevel(self)
-        window.title("区域 · 坟场")
-        window.configure(bg=BG)
-        window.geometry("760x620")
-
-        for player in self.game.players:
-            frame = tk.Frame(window, bg=PANEL)
-            frame.pack(fill="x", padx=10, pady=6)
-            tk.Label(frame, text=f"{player.name} — 坟场 {len(player.graveyard)} 张", bg=PANEL,
-                     fg=TEXT, font=FONT_BOLD).pack(anchor="w", padx=6)
-            if player.graveyard:
-                grid = card_grid(frame, player.graveyard, columns=6)
-                grid.pack(fill="x", padx=6, pady=4)
-            else:
-                tk.Label(frame, text="（空）", bg=PANEL, fg=TEXT_DIM, font=FONT_SMALL).pack(anchor="w", padx=6)
-            tk.Label(frame, text=f"牌库剩余 {len(player.library)} 张", bg=PANEL, fg=TEXT_DIM,
-                     font=FONT_SMALL).pack(anchor="w", padx=6)
-
-        # 我的套牌概况
-        if self.human is not None:
-            allcards = list(self.human.library) + list(self.human.hand) + list(self.human.graveyard)
-            datas = [c.data for c in allcards]
-            tk.Label(window, text="套牌概况", bg=BG, fg=TEXT, font=FONT_BOLD).pack(anchor="w", padx=12, pady=(10, 2))
-            tk.Label(window, text=deck_summary(datas), bg=BG, fg=TEXT_DIM, font=FONT_SMALL,
-                     justify="left").pack(anchor="w", padx=12)
-            tk.Button(
-                window, text="查看我的牌库剩余卡种（卡图）", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL,
-                relief="flat", command=self.show_library,
-            ).pack(anchor="w", padx=12, pady=8)
-
-    def show_library(self) -> None:
-        """用卡图列出我牌库里还剩哪些卡种（不泄露抽取顺序）。"""
-        if self.human is None:
-            return
-        grouped: dict[str, list[Any]] = {}
-        for card in self.human.library:
-            grouped.setdefault(card.name, []).append(card)
-        if not grouped:
-            messagebox.showinfo("牌库", "牌库已空")
-            return
-
-        window = tk.Toplevel(self)
-        window.title(f"我的牌库 · 剩余 {len(self.human.library)} 张 / {len(grouped)} 种")
-        window.configure(bg=BG)
-        window.geometry("780x600")
-        tk.Label(window, text="同一种只列一张，括号里是剩余张数", bg=BG, fg=TEXT_DIM,
-                 font=FONT_SMALL).pack(anchor="w", padx=12, pady=(8, 0))
-
-        unique = [cards[0] for cards in grouped.values()]
-        for card in unique:
-            card.subtitle_hint = f"×{len(grouped[card.name])}"
-        grid = card_grid(window, unique, columns=6, show_count=True)
-        grid.pack(fill="both", expand=True, padx=10, pady=8)
-
-        # 顺手把这些卡图也补上
-        get_cache().prefetch([c.data for c in unique], root=self)
+        self.block_assignments.clear()
+        self.focused_attacker = None
+        self.game.submit(Action(kind="blockers", payload={"assignments": {}}))
+        self.pending = None
+        self.pump()
 
     def _show_game_over(self) -> None:
-        if self.game is None:
-            return
-        winner = self.game.winner
-        text = f"胜者：{winner.name}" if winner else "平局"
-        self._append_log(f"=== 对局结束 · {text} ===")
-        messagebox.showinfo("对局结束", f"{text}\n共进行了 {self.game.turn_number} 个回合")
+        dialogs.show_game_over(self)
 
     # ---- 引擎回调（占卜/侦察时由引擎询问）
     def scry_decision(self, game: Game, player: Player, cards: list) -> list:
@@ -963,193 +1023,6 @@ class MTGApp(tk.Tk):
 
     def surveil_decision(self, game: Game, player: Player, cards: list) -> list:
         return self.ai_agent.surveil_decision(game, player, cards)
-
-
-# -------------------------------------------------------------------- 辅助函数
-
-def card_grid(
-    master: tk.Misc,
-    cards: list[Any],
-    columns: int = 6,
-    show_count: bool = False,
-    height: int = 320,
-) -> tk.Frame:
-    """带滚动条的卡图网格。cards 为 Card 对象列表（取 .data 渲染）。"""
-    outer = tk.Frame(master, bg=PANEL)
-    canvas = tk.Canvas(outer, bg=PANEL, highlightthickness=0, height=height)
-    scroll = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-    inner = tk.Frame(canvas, bg=PANEL)
-    canvas.create_window((0, 0), window=inner, anchor="nw")
-    canvas.configure(yscrollcommand=scroll.set)
-    canvas.pack(side="left", fill="both", expand=True)
-    scroll.pack(side="right", fill="y")
-
-    def on_configure(_event: tk.Event) -> None:
-        canvas.configure(scrollregion=canvas.bbox("all"))
-
-    def on_wheel(event: tk.Event) -> None:
-        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-    inner.bind("<Configure>", on_configure)
-    canvas.bind("<MouseWheel>", on_wheel)
-
-    for index, card in enumerate(cards):
-        sub = getattr(card, "subtitle_hint", "") if show_count else ""
-        widget = CardWidget(inner, card.data, compact=True, subtitle=sub)
-        widget.grid(row=index // columns, column=index % columns, padx=3, pady=3)
-        card_tooltip(widget, card.data, _card_description(card.data))
-        widget.bind("<MouseWheel>", on_wheel)
-        for child in widget.winfo_children():
-            child.bind("<MouseWheel>", on_wheel)
-
-    return outer
-
-
-def _permanent_by_id(game: Game, perm_id: int) -> Any | None:
-    for player in game.players:
-        for perm in player.permanents:
-            if id(perm) == perm_id:
-                return perm
-    return None
-
-
-def _matches_target_kind(perm: Any, kind: str) -> bool:
-    if kind in ("creature",):
-        return perm.is_creature
-    if kind == "permanent":
-        return True
-    if kind == "creature_or_planeswalker":
-        return perm.is_creature or perm.is_planeswalker
-    if kind in ("any", "creature_or_player"):
-        return perm.is_creature or perm.is_planeswalker
-    if kind == "artifact":
-        return perm.is_artifact
-    if kind == "enchantment":
-        return perm.is_enchantment
-    if kind == "land":
-        return perm.is_land
-    return True
-
-
-def _ask_target(master: tk.Misc, title: str, options: list) -> Any | None:
-    """弹窗让人类选一个目标。"""
-    result: list[Any] = [None]
-    dialog = tk.Toplevel(master)
-    dialog.title(title)
-    dialog.configure(bg=BG)
-    dialog.geometry("440x380")
-    dialog.transient(master)
-    dialog.grab_set()
-
-    tk.Label(dialog, text=title, bg=BG, fg=TEXT, font=FONT_BOLD, wraplength=400).pack(pady=(10, 6))
-
-    listbox = tk.Listbox(dialog, font=FONT_NORMAL, height=12)
-    listbox.pack(fill="both", expand=True, padx=12)
-    for perm in options:
-        owner = "我方" if perm.controller is getattr(master, "human", None) else "对手"
-        extra = f"{perm.power()}/{perm.toughness()}" if perm.is_creature else ""
-        listbox.insert("end", f"[{owner}] {perm.name} {extra}".strip())
-    if options:
-        listbox.selection_set(0)
-
-    def confirm() -> None:
-        sel = listbox.curselection()
-        if sel:
-            result[0] = options[sel[0]]
-        dialog.destroy()
-
-    def cancel() -> None:
-        result[0] = None
-        dialog.destroy()
-
-    row = tk.Frame(dialog, bg=BG)
-    row.pack(pady=8)
-    tk.Button(row, text="确定", bg=BTN_ACCENT, fg=BTN_FG, font=FONT_BOLD, width=8, relief="flat",
-              command=confirm).pack(side="left", padx=6)
-    tk.Button(row, text="取消", bg=BTN_BG, fg=BTN_FG, font=FONT_NORMAL, width=8, relief="flat",
-              command=cancel).pack(side="left", padx=6)
-
-    dialog.wait_window()
-    return result[0]
-
-
-def _permanent_description(perm: Any) -> str:
-    lines = [perm.name, perm.data.type_line_cn]
-    if perm.is_creature:
-        lines.append(f"攻防 {perm.power()}/{perm.toughness()}")
-    if perm.is_planeswalker:
-        lines.append(f"忠诚 {perm.loyalty}")
-    if perm.keywords:
-        lines.append("异能：" + "、".join(sorted(str(k.value) for k in perm.keywords)))
-    if perm.abilities:
-        texts = [a.describe() for a in perm.abilities if a.kind != "keyword"]
-        if texts:
-            lines.append("规则：" + " | ".join(t[:70] for t in texts))
-    if perm.data.unparsed:
-        lines.append("未实现：" + " | ".join(u[:60] for u in perm.data.unparsed))
-    return "\n".join(lines)
-
-
-def _card_description(data: Any) -> str:
-    lines = [data.name, f"{data.mana_string}  （法术力值 {int(data.cmc)}）", data.type_line_cn]
-    if data.is_creature:
-        lines.append(f"攻防 {data.base_power}/{data.base_toughness}")
-    if data.oracle_text:
-        lines.append("")
-        lines.append(data.oracle_text)
-    if data.unparsed:
-        lines.append("")
-        lines.append("（部分异能本引擎未实现：" + "；".join(data.unparsed) + "）")
-    return "\n".join(lines)
-
-
-def _list_preset_decks() -> list[tuple[str, str]]:
-    """列出 decks/ 下的预构筑套牌（路径, 显示名）。"""
-    if not os.path.isdir(DECKS_DIR):
-        return []
-    import json
-
-    out: list[tuple[str, str]] = []
-    for filename in sorted(os.listdir(DECKS_DIR)):
-        if not filename.endswith(".json"):
-            continue
-        path = os.path.join(DECKS_DIR, filename)
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-            out.append((path, payload.get("name", filename[:-5])))
-        except Exception:  # noqa: BLE001
-            continue
-    return out
-
-
-def _colors_of_deck(deck: list) -> list[str]:
-    """从套牌推断主色。"""
-    tally: dict[str, int] = {}
-    for data in deck:
-        if data.is_land:
-            continue
-        for symbol in re.findall(r"\{([WUBRG])\}", data.mana_cost or ""):
-            tally[symbol] = tally.get(symbol, 0) + 1
-    ordered = sorted(tally.items(), key=lambda kv: -kv[1])
-    return [c for c, _n in ordered[:2]] or ["G"]
-
-
-def _opposite_colors(colors: list[str]) -> list[str]:
-    """给电脑挑一套不同的颜色，增加对局变化。"""
-    pairs = {
-        ("W",): ["B", "R"],
-        ("U",): ["R", "G"],
-        ("B",): ["W", "G"],
-        ("R",): ["U", "W"],
-        ("G",): ["B", "U"],
-    }
-    key = tuple(sorted(colors))
-    if key in pairs:
-        return pairs[key]
-    all_colors = ["W", "U", "B", "R", "G"]
-    remaining = [c for c in all_colors if c not in colors]
-    return remaining[:2] if remaining else ["R"]
 
 
 def main() -> int:

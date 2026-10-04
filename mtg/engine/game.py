@@ -418,6 +418,7 @@ class Game:
             for permanent in player.permanents:
                 permanent._triggered_this_turn = False  # type: ignore[attr-defined]
                 permanent.trigger_counts.clear()
+                permanent.activated_this_turn.clear()
         self.log(f"\n--- 第 {self.turn_number} 回合：{self.active_player.name} ---")
 
     def _advance_phase(self) -> None:
@@ -508,7 +509,9 @@ class Game:
             if not self.cast_spell(player, action.card, action.targets, action.x_value):
                 self.last_failed_card = action.card
         elif kind == "activate":
-            if not self.activate_ability(action.permanent, action.ability_index, action.targets):
+            if not self.activate_ability(
+                action.permanent, action.ability_index, action.targets, action.payload.get("choices")
+            ):
                 self.last_failed_card = action.card
         elif kind == "attackers":
             self.combat.declare_attackers(action.payload.get("declarations", []))
@@ -638,9 +641,19 @@ class Game:
 
     # ---------------------------------------------------------------- 启动异能
     def activate_ability(
-        self, permanent: Permanent | None, ability_index: int, targets: list[Any] | None = None
+        self,
+        permanent: Permanent | None,
+        ability_index: int,
+        targets: list[Any] | None = None,
+        choices: dict[str, Any] | None = None,
     ) -> bool:
-        """启动一个启动式异能。"""
+        """启动一个启动式异能。
+
+        ``choices`` 可携带需要主动选择的额外费用，键为：
+
+        - ``"discard"``: 要弃掉的 ``Card`` 列表（不合法时回退为随机弃牌）
+        - ``"sacrifice"``: 要牺牲的 ``Permanent`` 列表（不合法时回退为自动挑选）
+        """
         if permanent is None:
             return False
         abilities = [
@@ -653,13 +666,21 @@ class Game:
         assert activated is not None
         player = permanent.controller
 
+        # "每回合只能启动一次"：本回合已用过则拒绝
+        if activated.cost.once_per_turn and ability_index in permanent.activated_this_turn:
+            self.log(f"{permanent.name} 的该异能本回合已启动过")
+            return False
+
         # 费用检查（法术力部分可自动横置地支付）
         if activated.cost.mana:
             auto_pay(self, player, activated.cost.mana)
-        if not self._can_pay_cost(player, permanent, activated.cost):
+        if not self._can_pay_cost(player, permanent, activated.cost, choices):
             self.log(f"无法支付 {permanent.name} 的异能费用")
             return False
-        self._pay_cost(player, permanent, activated.cost)
+        self._pay_cost(player, permanent, activated.cost, choices)
+
+        if activated.cost.once_per_turn:
+            permanent.activated_this_turn.add(ability_index)
 
         if activated.is_mana_ability:
             # 法术力异能不使用堆叠，立即结算
@@ -681,7 +702,9 @@ class Game:
         self.log(f"{player.name} 启动 {permanent.name} 的异能")
         return True
 
-    def _can_pay_cost(self, player: Player, permanent: Permanent, cost: Any) -> bool:
+    def _can_pay_cost(
+        self, player: Player, permanent: Permanent, cost: Any, choices: dict[str, Any] | None = None
+    ) -> bool:
         if cost.tap and permanent.tapped:
             return False
         if cost.tap and permanent.is_sick:
@@ -690,9 +713,20 @@ class Game:
             return False
         if cost.life and player.life < cost.life:
             return False
+        if cost.discard and len(player.hand) < cost.discard:
+            return False
+        if cost.remove_counters:
+            kind, amount = cost.remove_counters
+            if permanent.counters.get(kind, 0) < amount:
+                return False
+        if cost.sacrifice_other and not self._sacrifice_candidates(player, permanent, cost.sacrifice_other):
+            return False
         return True
 
-    def _pay_cost(self, player: Player, permanent: Permanent, cost: Any) -> None:
+    def _pay_cost(
+        self, player: Player, permanent: Permanent, cost: Any, choices: dict[str, Any] | None = None
+    ) -> None:
+        choices = choices or {}
         if cost.tap:
             permanent.tap()
         if cost.mana:
@@ -701,8 +735,66 @@ class Game:
                 apply_payment(player.mana_pool, plan)
         if cost.life:
             player.lose_life(cost.life)
+        if cost.remove_counters:
+            kind, amount = cost.remove_counters
+            permanent.remove_counter(kind, amount)
+        if cost.discard:
+            chosen = [c for c in choices.get("discard", []) if c in player.hand]
+            if len(chosen) >= cost.discard:
+                for card in chosen[: cost.discard]:
+                    player.discard(card)
+            else:
+                player.discard_random(cost.discard, self.rng)
+        if cost.sacrifice_other:
+            chosen = [
+                p
+                for p in choices.get("sacrifice", [])
+                if p in self._sacrifice_candidates(player, permanent, cost.sacrifice_other)
+            ]
+            picking = chosen or self._auto_pick_sacrifice(player, permanent, cost.sacrifice_other)
+            for target in picking[:1]:
+                self.sacrifice_permanent(target)
         if cost.sacrifice_self:
             self.sacrifice_permanent(permanent)
+
+    def _sacrifice_candidates(
+        self, player: Player, permanent: Permanent, spec: Any
+    ) -> list[Permanent]:
+        """牺牲其他费用的合法候选（由该玩家操控、且不是异能来源自身）。"""
+        out = []
+        for candidate in player.permanents:
+            if candidate is permanent:
+                continue
+            if self._matches_target_spec(candidate, spec):
+                out.append(candidate)
+        return out
+
+    def _auto_pick_sacrifice(
+        self, player: Player, permanent: Permanent, spec: Any
+    ) -> list[Permanent]:
+        """没有玩家选择时的回退：牺牲最弱的一个合法永久物。"""
+        candidates = self._sacrifice_candidates(player, permanent, spec)
+        if not candidates:
+            return []
+        candidates.sort(key=lambda p: (p.power() + p.toughness(), p.timestamp))
+        return candidates[:1]
+
+    @staticmethod
+    def _matches_target_spec(target: Permanent, spec: Any) -> bool:
+        kind = getattr(spec, "kind", "any")
+        if kind in ("any", "permanent", "creature_or_planeswalker"):
+            return True
+        if kind == "creature":
+            return target.is_creature
+        if kind == "artifact":
+            return target.is_artifact
+        if kind == "enchantment":
+            return target.is_enchantment
+        if kind == "land":
+            return target.is_land
+        if kind == "planeswalker":
+            return target.is_planeswalker
+        return True
 
     # ---------------------------------------------------------------- 堆叠结算
     def _resolve_top(self) -> None:
